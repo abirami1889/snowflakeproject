@@ -1,0 +1,71 @@
+create database project
+
+create or replace storage integration s3_int
+TYPE=EXTERNAL_STAGE
+STORAGE_PROVIDER=S3
+ENABLED=TRUE
+STORAGE_AWS_ROLE_ARN='arn:aws:iam::643839296261:role/snowflake-project'                                       
+STORAGE_ALLOWED_LOCATIONS=('S3://snowflakeprojectabi/json/','s3://snowflakeprojectabi/csv')
+COMMENT='This is my first project in snowflake'
+
+
+desc integration s3_INT
+
+//creating file format for json
+
+create or replace file format json_fileformat
+type=json
+
+//creating stage object for json
+create or replace stage json_stage
+url='S3://snowflakeprojectabi/json/'
+storage_integration=s3_int
+file_format=json_fileformat
+
+
+select * from @json_stage
+
+
+//creating file format and stage for csv
+
+create or replace file format aws_csv_fileformat
+type=csv
+field_delimiter=','
+skip_header=1
+null_if=('NULL','null')
+empty_field_as_null=true
+field_optionally_enclosed_by='"';
+
+
+//creating stage object with integration object & file format object
+create or replace stage aws_stage_csv
+url='s3://snowflakeprojectabi/csv/'
+storage_integration=s3_int
+file_format=aws_csv_fileformat
+
+
+create or replace table housing
+(
+timestamp	date,
+title	string,
+price	int,
+market	string,
+surface varchar(100),
+location	varchar(500),
+remote_support	string,
+lighting	string,
+advertiser_type	string,
+description varchar(10000),
+no_of_rooms	int,
+form_of_property string,	
+url	varchar(500),
+is_for_sale string
+);
+
+
+copy into housing 
+from @aws_stage_csv
+on_error='continue'
+
+
+select * from housing
